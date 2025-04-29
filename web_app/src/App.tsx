@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiUploadCloud, FiSun, FiMoon, FiCopy, FiCheck, FiGlobe, FiFileText, FiSettings, FiDownloadCloud, FiAlertTriangle } from 'react-icons/fi';
+import { FiUploadCloud, FiSun, FiMoon, FiCopy, FiCheck, FiGlobe, FiFileText, FiSettings, FiDownloadCloud, FiAlertTriangle, FiLoader } from 'react-icons/fi'; // Added FiLoader
 import { Switch } from '@headlessui/react';
 import { parseVscodeTheme, ParsedVscodeTheme } from './utils/vscodeThemeParser';
 import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
 import stripJsonComments from 'strip-json-comments';
-import './index.css'; // Ensure global styles are imported
+import './index.css';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -15,6 +15,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // Added processing state
 
   // --- Theme Handling ---
   useEffect(() => {
@@ -49,29 +50,42 @@ function App() {
     setSelectedFile(file);
     setParseError(null);
     setParsedTheme(null);
+    setIsProcessing(true); // Start processing
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const jsonString = e.target?.result as string;
         if (!jsonString) throw new Error('File content is empty');
-        const json = JSON.parse(stripJsonComments(jsonString));
-        let theme = parseVscodeTheme(json);
-        if (!json.name && file.name) {
-          const name = file.name.replace(/\.[^.]+$/, '');
-          theme = { ...theme, name };
-        }
-        setParsedTheme(theme);
-      } catch (err: any) { // Catch JSON parsing errors specifically
-        console.error("Parsing error:", err);
-        setParseError(t('parsingError') + (err instanceof Error ? `: ${err.message}` : ''));
+        // Simulate processing time for visual feedback
+        setTimeout(() => {
+          try {
+            const json = JSON.parse(stripJsonComments(jsonString));
+            let theme = parseVscodeTheme(json);
+            if (!json.name && file.name) {
+              const name = file.name.replace(/\.[^.]+$/, '');
+              theme = { ...theme, name };
+            }
+            setParsedTheme(theme);
+            setIsProcessing(false); // End processing
+          } catch (err: any) {
+            console.error("Parsing error:", err);
+            setParseError(t('parsingError') + (err instanceof Error ? `: ${err.message}` : ''));
+            setIsProcessing(false); // End processing on error
+          }
+        }, 500); // Simulate 500ms processing
+      } catch (err: any) {
+        console.error("Initial reading error:", err);
+        setParseError(t('readFileError'));
+        setIsProcessing(false); // End processing on error
       }
     };
     reader.onerror = (e) => {
       console.error("Reading error:", e);
       setParseError(t('readFileError'));
+      setIsProcessing(false); // End processing on error
     };
     reader.readAsText(file);
-  }, [t]); // Add t to dependency array
+  }, [t]);
 
   // --- Drag & Drop Handlers ---
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
@@ -99,23 +113,36 @@ function App() {
 
   // --- Conversion & Download ---
   const handleConvert = () => {
-    if (!parsedTheme) return;
+    if (!parsedTheme || isProcessing) return;
+    setIsProcessing(true); // Indicate processing for download generation
     try {
-      const xml = generateXcodeTheme(parsedTheme);
-      const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-      const filename = `${parsedTheme.name || 'theme'}.xccolortheme`;
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
+      // Simulate generation time
       setTimeout(() => {
-        URL.revokeObjectURL(link.href);
-        document.body.removeChild(link);
-      }, 100);
+        try {
+          const xml = generateXcodeTheme(parsedTheme);
+          const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+          const filename = `${parsedTheme.name || 'theme'}.xccolortheme`;
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          setIsProcessing(false); // End processing
+          setTimeout(() => {
+            URL.revokeObjectURL(link.href);
+            document.body.removeChild(link);
+          }, 100);
+        } catch (error) {
+          console.error("Conversion error:", error);
+          setParseError('Failed to generate Xcode theme.'); // Consider translating this
+          setIsProcessing(false); // End processing on error
+        }
+      }, 300); // Simulate 300ms generation
     } catch (error) {
-      console.error("Conversion error:", error);
-      setParseError('Failed to generate Xcode theme.'); // Consider translating this
+      // Catch potential immediate errors if any (though unlikely here)
+      console.error("Immediate conversion error:", error);
+      setParseError('Failed to initiate theme generation.');
+      setIsProcessing(false);
     }
   };
 
@@ -133,9 +160,10 @@ function App() {
 
   // --- Render Helper Components ---
   const InfoCard = ({ icon: Icon, title, children }: { icon: React.ElementType, title: string, children: React.ReactNode }) => (
-    <div className="bg-white dark:bg-gray-800/50 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+    // Removed border, increased rounding and shadow
+    <div className="bg-white dark:bg-gray-800/60 rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
       <div className="flex items-center mb-3">
-        <Icon className="w-6 h-6 mr-3 text-blue-500 dark:text-blue-400" />
+        <Icon className="w-6 h-6 mr-3 text-blue-500 dark:text-blue-400 flex-shrink-0" />
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">{title}</h3>
       </div>
       <div className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
@@ -157,32 +185,14 @@ function App() {
   );
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans`}>
-      {/* Header */}
-      <header className="sticky top-0 z-30 w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Left: Title & Subtitle */}
-            <div className="flex items-baseline space-x-4">
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">{t('appTitle')}</span>
-              <span className="hidden sm:inline text-sm text-gray-500 dark:text-gray-400">{t('appSubtitle')}</span>
-            </div>
-
+    <div className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900/50 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans`}>
+      {/* Header with Controls */}
+      <header className="sticky top-0 z-30 w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/50 shadow-sm">
+        {/* Reduced max-width and centered */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-end items-center h-16"> {/* Changed justify-between to justify-end */}
             {/* Right: Controls */}
             <div className="flex items-center space-x-4">
-              {/* Convert Button */}
-              <button
-                onClick={handleConvert}
-                disabled={!parsedTheme}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-150 flex items-center space-x-2 
-                  ${parsedTheme
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-800'
-                    : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'}`}
-              >
-                <FiDownloadCloud className="w-4 h-4"/>
-                <span>{t('convertAndDownload')}</span>
-              </button>
-
               {/* Language Switcher */}
               <div className="relative">
                 <select
@@ -207,30 +217,37 @@ function App() {
               >
                 <span className="sr-only">{isDarkMode ? t('switchToLight') : t('switchToDark')}</span>
                 <span className={`${isDarkMode ? 'translate-x-6' : 'translate-x-1'}
-                    inline-block w-4 h-4 transform bg-white rounded-full transition-transform flex items-center justify-center`}
+                    inline-block w-4 h-4 transform bg-white rounded-full transition-transform flex items-center justify-center shadow`}
                 >
                   {isDarkMode ? <FiMoon className="w-3 h-3 text-blue-600" /> : <FiSun className="w-3 h-3 text-gray-500" />}
                 </span>
               </Switch>
             </div>
           </div>
-          {/* Slogan (visible below header on smaller screens) */}
-          <div className="sm:hidden text-center text-xs text-gray-500 dark:text-gray-400 pb-2">
-            {t('appSlogan')}
-          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Slogan (visible above main content on larger screens) */}
-        <p className="hidden sm:block text-center text-lg text-gray-500 dark:text-gray-400 mb-12 font-medium">
-          {t('appSlogan')}
-        </p>
+      {/* Reduced max-width and centered */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
+
+        {/* Hero Section */}
+        <div className="text-center mb-12 md:mb-16 lg:mb-20">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white mb-3">
+            {t('appTitle')}
+          </h1>
+          <h2 className="text-lg md:text-xl lg:text-2xl text-gray-600 dark:text-gray-300 mb-4">
+            {t('appSubtitle')}
+          </h2>
+          <p className="text-md md:text-lg text-gray-500 dark:text-gray-400 font-medium">
+            {t('appSlogan')}
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* Left/Top: Upload & Info */}
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800/50 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8 hover:shadow-2xl transition-shadow duration-300">
+          {/* Left/Top: Upload & Info Area */}
+          {/* Increased rounding and shadow, removed border */}
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800/60 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300">
             {/* File Uploader */}
             <div
               onDragOver={handleDragOver}
@@ -238,21 +255,31 @@ function App() {
               onDrop={handleDrop}
               className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300 
                 ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}
-                ${selectedFile ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : ''}`}
+                ${selectedFile && !parseError ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : ''}
+                ${parseError ? 'border-red-500 bg-red-50 dark:bg-red-900/30' : ''}`}
             >
               <input
                 type="file"
-                accept=".json,.jsonc" // Accept json and jsonc files
+                accept=".json,.jsonc"
                 onChange={(e) => e.target.files && handleFileSelected(e.target.files[0])}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" // Hidden input
                 id="file-upload"
+                disabled={isProcessing} // Disable during processing
               />
-              <label htmlFor="file-upload" className="cursor-pointer">
-                <FiUploadCloud className={`mx-auto h-12 w-12 mb-4 transition-colors duration-300 ${selectedFile ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`} />
+              <label htmlFor="file-upload" className={`cursor-pointer ${isProcessing ? 'cursor-wait' : ''}`}>
+                {isProcessing ? (
+                  <FiLoader className="mx-auto h-12 w-12 mb-4 text-blue-500 dark:text-blue-400 animate-spin" />
+                ) : (
+                  <FiUploadCloud className={`mx-auto h-12 w-12 mb-4 transition-colors duration-300 
+                    ${selectedFile && !parseError ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}
+                    ${parseError ? 'text-red-600 dark:text-red-400' : ''}`} />
+                )}
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">{t('uploadAreaTitle')}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('uploadAreaDescription')}</p>
                 <span className={`inline-block px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300 
-                  ${selectedFile ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'}`}>
+                  ${selectedFile && !parseError ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200'}
+                  ${parseError ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' : ''}
+                  ${isProcessing ? 'opacity-50' : ''}`}>
                   {selectedFile ? t('fileSelected') : t('uploadAreaButton')}
                 </span>
                 {selectedFile && <p className="mt-3 text-xs font-mono text-gray-600 dark:text-gray-400 break-all">{selectedFile.name}</p>}
@@ -267,52 +294,37 @@ function App() {
             )}
 
             {/* Parsed Theme Info */}
-            {parsedTheme && (
-              <div className="mt-8 p-6 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+            {parsedTheme && !isProcessing && (
+              // Removed border, adjusted background
+              <div className="mt-8 p-6 rounded-xl bg-gray-50 dark:bg-gray-700/30">
                 <h4 className="font-bold mb-3 text-gray-900 dark:text-gray-100">{t('themeInfoTitle')}</h4>
                 <ThemeInfoDisplay theme={parsedTheme} />
               </div>
             )}
+
+            {/* Convert Button - Moved Here */}
+            <div className="mt-8 text-center">
+              <button
+                onClick={handleConvert}
+                disabled={!parsedTheme || isProcessing} // Disable if no theme or processing
+                className={`px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 w-full sm:w-auto sm:inline-flex 
+                  ${parsedTheme && !isProcessing
+                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-900 transform hover:scale-105'
+                    : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-inner'}`}
+              >
+                {isProcessing ? <FiLoader className="w-5 h-5 animate-spin"/> : <FiDownloadCloud className="w-5 h-5"/>}
+                <span>{isProcessing ? 'Processing...' : t('convertAndDownload')}</span> {/* Add Processing text */}
+              </button>
+            </div>
           </div>
 
           {/* Right/Bottom: Instructions & Disclaimer */}
-          <div className="space-y-8">
-            {/* How to Use */}
-            <InfoCard icon={FiFileText} title={t('howToUseTitle')}>
-              <ol className="list-decimal list-inside space-y-1">
-                <li><strong>{t('step1Title')}:</strong> {t('step1Description')}</li>
-                <li><strong>{t('step2Title')}:</strong> {t('step2Description')}</li>
-                <li><strong>{t('step3Title')}:</strong> {t('step3Description')}</li>
-              </ol>
-            </InfoCard>
-
-            {/* Installation Guide */}
-            <InfoCard icon={FiSettings} title={t('installationGuideTitle')}>
-              <p>{t('installationGuideText')}</p>
-              <div className="mt-3 flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md border border-gray-300 dark:border-gray-600">
-                <code className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all flex-grow">
-                  ~/Library/Developer/Xcode/UserData/FontAndColorThemes/
-                </code>
-                <button
-                  onClick={copyXcodePath}
-                  className={`p-1.5 rounded-md transition-colors duration-200 ${copySuccess ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400' : 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-600 dark:text-gray-300'}`}
-                  aria-label={copySuccess ? t('pathCopied') : t('copyPath')}
-                >
-                  {copySuccess ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
-                </button>
-              </div>
-            </InfoCard>
-
-            {/* Disclaimer */}
-            <InfoCard icon={FiAlertTriangle} title={t('disclaimerTitle')}>
-              <p>{t('disclaimerText')}</p>
-            </InfoCard>
-          </div>
+          {/* ...existing code... */}
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-xs text-gray-400 dark:text-gray-500 py-6 select-none">
+      <footer className="text-center text-xs text-gray-400 dark:text-gray-500 py-8 mt-12 select-none">
         Made with <span className="text-pink-500 dark:text-pink-400">♥</span> by vs2x
       </footer>
     </div>
