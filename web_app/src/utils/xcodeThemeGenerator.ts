@@ -25,8 +25,16 @@ const colorMapping: Record<string, string> = {
 
 // VSCode token → Xcode syntax token 映射（部分示例，可扩展）
 const tokenMapping: Record<string, string> = {
+  // VSCode → Xcode token 映射
   'comment': 'xcode.syntax.comment',
   'string': 'xcode.syntax.string',
+  'string.quoted': 'xcode.syntax.string',
+  'string.quoted.double': 'xcode.syntax.string',
+  'string.quoted.single': 'xcode.syntax.string',
+  // 字符常量 scope → xcode.syntax.character
+  'constant.character': 'xcode.syntax.character',
+  'string.character': 'xcode.syntax.character',
+  'character': 'xcode.syntax.character', // 保险起见
   'keyword': 'xcode.syntax.keyword',
   'number': 'xcode.syntax.number',
   'variable': 'xcode.syntax.identifier.variable',
@@ -66,17 +74,33 @@ export function generateXcodeTheme(theme: ParsedVscodeTheme): string {
       xcodeColors[xcKey] = hexToXcodeColor(theme.colors[vsKey], xcodeColors[xcKey] || '1 1 1 1');
     }
   }
-  // 2. token 映射
+  // 2. token 映射（优先采用最通用 scope 的颜色）
   const syntaxColors: Record<string, string> = {};
+  // 优先级列表，越前越通用，越后越专用
+  const scopePriority = [
+    'string', 'string.quoted', 'string.quoted.double', 'string.quoted.single',
+    'constant.character', 'string.character', 'character',
+    'comment', 'keyword', 'number', 'variable', 'function', 'type', 'class', 'constant', 'attribute'
+  ];
   if (Array.isArray(theme.tokenColors)) {
     for (const token of theme.tokenColors) {
-      // token.scope 可以是字符串或数组
       const scopes: string[] = Array.isArray(token.scope) ? token.scope : (typeof token.scope === 'string' ? [token.scope] : []);
       const settings = token.settings || {};
       for (const s of scopes) {
         const mapped = tokenMapping[s] || tokenMapping[s.split('.')?.[0]];
         if (mapped && settings.foreground) {
-          syntaxColors[mapped] = hexToXcodeColor(settings.foreground);
+          // 只在未被更通用 scope 设置时赋值
+          if (!(mapped in syntaxColors)) {
+            syntaxColors[mapped] = hexToXcodeColor(settings.foreground);
+          } else {
+            // 如果已赋值，只有当前 scope 优先级更高才覆盖
+            const prevScope = Object.keys(tokenMapping).find(key => tokenMapping[key] === mapped && syntaxColors[mapped] === hexToXcodeColor(settings.foreground));
+            const prevIdx = prevScope ? scopePriority.indexOf(prevScope) : 999;
+            const currIdx = scopePriority.indexOf(s);
+            if (currIdx > -1 && (prevIdx === -1 || currIdx < prevIdx)) {
+              syntaxColors[mapped] = hexToXcodeColor(settings.foreground);
+            }
+          }
         }
       }
     }
