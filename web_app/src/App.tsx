@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiUploadCloud, FiSun, FiMoon, FiCopy, FiCheck, FiGlobe, FiFileText, FiSettings, FiDownloadCloud, FiAlertTriangle, FiLoader } from 'react-icons/fi'; // Added FiLoader
+import { FiUploadCloud, FiSun, FiMoon, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiAlertCircle, FiCopy, FiCheck } from 'react-icons/fi'; // Re-added FiCopy, FiCheck, Added FiInfo, FiAlertCircle
 import { Switch } from '@headlessui/react';
 import { parseVscodeTheme, ParsedVscodeTheme } from './utils/vscodeThemeParser';
 import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
@@ -14,7 +14,7 @@ function App() {
   const [parseError, setParseError] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false); // Restored state
   const [isProcessing, setIsProcessing] = useState(false); // Added processing state
 
   // --- Theme Handling ---
@@ -67,13 +67,13 @@ function App() {
             }
             setParsedTheme(theme);
             setIsProcessing(false); // End processing
-          } catch (err: any) {
+          } catch (err) { // Changed from err: any
             console.error("Parsing error:", err);
             setParseError(t('parsingError') + (err instanceof Error ? `: ${err.message}` : ''));
             setIsProcessing(false); // End processing on error
           }
         }, 500); // Simulate 500ms processing
-      } catch (err: any) {
+      } catch (err) { // Changed from err: any
         console.error("Initial reading error:", err);
         setParseError(t('readFileError'));
         setIsProcessing(false); // End processing on error
@@ -147,6 +147,7 @@ function App() {
   };
 
   // --- Copy Path ---
+  // Restored function
   const copyXcodePath = () => {
     const path = '~/Library/Developer/Xcode/UserData/FontAndColorThemes/';
     navigator.clipboard.writeText(path).then(() => {
@@ -159,6 +160,7 @@ function App() {
   };
 
   // --- Render Helper Components ---
+  // Restored component
   const InfoCard = ({ icon: Icon, title, children }: { icon: React.ElementType, title: string, children: React.ReactNode }) => (
     // Removed border, increased rounding and shadow
     <div className="bg-white dark:bg-gray-800/60 rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
@@ -189,7 +191,8 @@ function App() {
       {/* Header with Controls */}
       <header className="sticky top-0 z-30 w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/50 shadow-sm">
         {/* Reduced max-width and centered */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Changed max-w-6xl to w-3/4 */}
+        <div className="w-3/4 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-end items-center h-16"> {/* Changed justify-between to justify-end */}
             {/* Right: Controls */}
             <div className="flex items-center space-x-4">
@@ -229,7 +232,8 @@ function App() {
 
       {/* Main Content */}
       {/* Reduced max-width and centered */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
+      {/* Changed max-w-6xl to w-3/4 */}
+      <main className="w-3/4 mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
 
         {/* Hero Section */}
         <div className="text-center mb-12 md:mb-16 lg:mb-20">
@@ -319,7 +323,32 @@ function App() {
           </div>
 
           {/* Right/Bottom: Instructions & Disclaimer */}
-          {/* ...existing code... */}
+          {/* Added InfoCards for instructions and disclaimer */}
+          <div className="lg:col-span-1 space-y-8">
+            <InfoCard icon={FiInfo} title={t('instructionsTitle')}>
+              <ol className="list-decimal list-inside space-y-2">
+                <li>{t('instructionsStep1')}</li>
+                <li>
+                  {t('instructionsStep2')}
+                  <div className="mt-2 flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
+                    <code className="text-xs font-mono break-all flex-grow">~/Library/Developer/Xcode/UserData/FontAndColorThemes/</code>
+                    <button
+                      onClick={copyXcodePath}
+                      title={copySuccess ? t('pathCopiedButton') : t('copyPathButton')}
+                      className={`p-1.5 rounded-md transition-colors ${copySuccess ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-600 dark:text-gray-300'}`}
+                    >
+                      {copySuccess ? <FiCheck className="w-4 h-4" /> : <FiCopy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </li>
+                <li>{t('instructionsStep3')}</li>
+              </ol>
+            </InfoCard>
+
+            <InfoCard icon={FiAlertCircle} title={t('disclaimerTitle')}>
+              <p>{t('disclaimerText')}</p>
+            </InfoCard>
+          </div>
         </div>
       </main>
 
