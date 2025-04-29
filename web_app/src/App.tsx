@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import FileUploader from './components/FileUploader';
 import HeroGradientBg from './components/HeroGradientBg';
 import { parseVscodeTheme, ParsedVscodeTheme } from './utils/vscodeThemeParser';
+import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
 import stripJsonComments from 'strip-json-comments';
 import './index.css';
 
@@ -36,10 +37,25 @@ function App() {
   };
 
   // 处理转换按钮点击（后续实现）
+  // 主题转换与下载
   const handleConvert = () => {
-    // TODO: 主题转换与下载逻辑
-    alert('转换功能稍后实现');
+    if (!parsedTheme) return;
+    const xml = generateXcodeTheme(parsedTheme);
+    const blob = new Blob([xml], { type: 'application/xml' });
+    // 文件名用主题名
+    const filename = `${parsedTheme.name || 'theme'}.xccolortheme`;
+    // 创建下载链接
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(link.href);
+      document.body.removeChild(link);
+    }, 100);
   };
+
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center bg-gradient-to-b from-[#f8fafc] to-[#e0e7ef] px-4 overflow-hidden">
