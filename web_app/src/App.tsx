@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiAlertTriangle, FiCopy, FiCheck, FiGithub, FiLink } from 'react-icons/fi'; // Added FiLink
+import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiStar, FiCopy, FiCheck, FiGithub, FiLink } from 'react-icons/fi'; // Added FiLink
 import { parseVscodeTheme, ParsedVscodeTheme } from './utils/vscodeThemeParser';
 import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
 import stripJsonComments from 'strip-json-comments';
@@ -11,16 +11,17 @@ interface Theme {
   name: string;
   background: string;
   subtitle: string;
+  tint: string
 }
 
 // Define Available Themes
 const themes: Theme[] = [
-  { name: 'blue', background: 'from-gray-900 to-blue-900/50', subtitle: 'from-blue-300 to-gray-100' },
-  { name: 'yellow', background: 'from-gray-900 to-yellow-900/50', subtitle: 'from-yellow-300 to-gray-100' },
-  { name: 'orange', background: 'from-gray-900 to-orange-900/50', subtitle: 'from-orange-300 to-gray-100' },
-  { name: 'purple', background: 'from-gray-900 to-purple-900/50', subtitle: 'from-purple-300 to-gray-100' },
-  { name: 'red', background: 'from-gray-900 to-red-900/50', subtitle: 'from-red-300 to-gray-100' },
-  { name: 'green', background: 'from-gray-900 to-green-900/50', subtitle: 'from-green-300 to-gray-100' },
+  { name: 'blue', background: 'from-gray-900 to-blue-900/50', subtitle: 'from-blue-300 to-gray-100', tint: 'text-blue-300' },
+  { name: 'yellow', background: 'from-gray-900 to-yellow-900/50', subtitle: 'from-yellow-300 to-gray-100', tint: 'text-yellow-300' },
+  { name: 'orange', background: 'from-gray-900 to-orange-900/50', subtitle: 'from-orange-300 to-gray-100', tint: 'text-orange-300' },
+  { name: 'purple', background: 'from-gray-900 to-purple-900/50', subtitle: 'from-purple-300 to-gray-100', tint: 'text-purple-300' },
+  { name: 'red', background: 'from-gray-900 to-red-900/50', subtitle: 'from-red-300 to-gray-100', tint: 'text-red-300' },
+  { name: 'green', background: 'from-gray-900 to-green-900/50', subtitle: 'from-green-300 to-gray-100', tint: 'text-green-300' },
 ];
 
 
@@ -259,6 +260,25 @@ function App() {
     </div>
   );
 
+  // 添加渐变文本处理函数
+  const renderThemeColorText = (text: string) => {
+    const parts = text.split(/(<themecolor>.*?<\/themecolor>)/);
+    return parts.map((part, index) => {
+      const themeColorMatch = part.match(/<themecolor>(.*?)<\/themecolor>/);
+      if (themeColorMatch) {
+        return (
+          <span 
+            key={index} 
+            className={`${currentTheme.tint}`}
+          >
+            {themeColorMatch[1]}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   const ThemeInfoDisplay = ({ theme }: { theme: ParsedVscodeTheme }) => (
     <div className="mt-6 text-sm text-gray-300 space-y-1">
       <p><strong>{t('themeName')}</strong> <span className="font-mono break-all">{theme.name || t('notAvailable')}</span></p>
@@ -335,14 +355,13 @@ function App() {
           </p>
         </div>
 
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Left/Top: Input Area */}
           <div className="lg:col-span-2 bg-gray-900/30 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300 space-y-8">
 
             {/* URL Input Section */}
             <div>
-              <label htmlFor="url-input" className="block text-lg font-semibold text-gray-100 mb-3">{t('fetchFromUrlTitle')}</label>
+              <h3 className="text-lg font-semibold text-gray-100 mb-2">{t('fetchFromUrlTitle')}</h3>
               <div className="flex items-center space-x-3">
                 <div className="relative flex-grow">
                   <FiLink className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isValidThemeUrl ? 'text-green-400' : 'text-gray-400'}`} />
@@ -391,44 +410,46 @@ function App() {
             </div>
 
             {/* File Uploader Section */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300
-                ${isDragging ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600 hover:border-gray-500'}
-                ${selectedFile && !parseError ? 'border-green-500 bg-green-900/30' : ''}
-                ${parseError && !selectedFile ? 'border-red-500 bg-red-900/30' : ''} /* Only show red border if error is relevant to upload */
-                ${isInputDisabled ? 'opacity-60' : ''}`
-              }
-            >
-              <input
-                type="file"
-                accept=".json,.jsonc"
-                onChange={(e) => e.target.files && handleFileSelected(e.target.files[0])}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                id="file-upload"
-                disabled={isInputDisabled}
-              />
-              <label htmlFor="file-upload" className={`cursor-pointer ${isInputDisabled ? 'cursor-wait' : ''}`}>
-                {isProcessing && selectedFile ? ( // Show loader only if processing a file
-                  <FiLoader className="mx-auto h-12 w-12 mb-4 text-gray-400 animate-spin" />
-                ) : (
-                  <FiUploadCloud className={`mx-auto h-12 w-12 mb-4 transition-colors duration-300
-                    ${selectedFile && !parseError ? 'text-green-400' : 'text-gray-500'}
-                    ${parseError && !selectedFile ? 'text-red-400' : ''}`} />
-                )}
-                <h3 className="text-lg font-semibold text-gray-100 mb-2">{t('uploadAreaTitle')}</h3>
-                <p className="text-sm text-gray-400 mb-4">{t('uploadAreaDescription')}</p>
-                <span className={`inline-block px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300
-                  ${selectedFile && !parseError ? 'bg-green-900/50 text-green-300' : 'bg-gray-800/60 hover:bg-gray-600 text-gray-200'}
-                  ${parseError && !selectedFile ? 'bg-red-900/50 text-red-300' : ''}
-                  ${isInputDisabled ? 'opacity-50' : ''}`
-                }>
-                  {selectedFile ? t('fileSelected') : t('uploadAreaButton')}
-                </span>
-                {selectedFile && <p className="mt-3 text-xs font-mono text-gray-400 break-all">{selectedFile.name}</p>}
-              </label>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-100 mb-2">{t('uploadAreaTitle')}</h3>
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300
+                  ${isDragging ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600 hover:border-gray-500'}
+                  ${selectedFile && !parseError ? 'border-green-500 bg-green-900/30' : ''}
+                  ${parseError && !selectedFile ? 'border-red-500 bg-red-900/30' : ''} /* Only show red border if error is relevant to upload */
+                  ${isInputDisabled ? 'opacity-60' : ''}`
+                }
+              >
+                <input
+                  type="file"
+                  accept=".json,.jsonc"
+                  onChange={(e) => e.target.files && handleFileSelected(e.target.files[0])}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  id="file-upload"
+                  disabled={isInputDisabled}
+                />
+                <label htmlFor="file-upload" className={`cursor-pointer ${isInputDisabled ? 'cursor-wait' : ''}`}>
+                  {isProcessing && selectedFile ? ( // Show loader only if processing a file
+                    <FiLoader className="mx-auto h-12 w-12 mb-4 text-gray-400 animate-spin" />
+                  ) : (
+                    <FiUploadCloud className={`mx-auto h-12 w-12 mb-4 transition-colors duration-300
+                      ${selectedFile && !parseError ? 'text-green-400' : 'text-gray-500'}
+                      ${parseError && !selectedFile ? 'text-red-400' : ''}`} />
+                  )}
+                  <p className="text-sm text-gray-400 mb-4">{t('uploadAreaDescription')}</p>
+                  <span className={`inline-block px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300
+                    ${selectedFile && !parseError ? 'bg-green-900/50 text-green-300' : 'bg-gray-800/60 hover:bg-gray-600 text-gray-200'}
+                    ${parseError && !selectedFile ? 'bg-red-900/50 text-red-300' : ''}
+                    ${isInputDisabled ? 'opacity-50' : ''}`
+                  }>
+                    {selectedFile ? t('fileSelected') : t('uploadAreaButton')}
+                  </span>
+                  {selectedFile && <p className="mt-3 text-xs font-mono text-gray-400 break-all">{selectedFile.name}</p>}
+                </label>
+              </div>
             </div>
 
             {/* Parse Error Display */}
@@ -466,11 +487,11 @@ function App() {
 
           {/* Right/Bottom: Instructions & Disclaimer */}
           <div className="lg:col-span-1 space-y-8">
-            <InfoCard icon={FiInfo} title={t('instructionsTitle')}>
+            <InfoCard icon={FiStar} title={t('instructionsTitle')}>
               <ol className="list-decimal list-inside space-y-2">
                 <li>{t('instructionsStep1')}</li>
                 <li>
-                  {t('instructionsStep2')}
+                  {renderThemeColorText(t('instructionsStep2'))}
                   <div className="mt-2 flex items-center space-x-2 bg-gray-900/40 p-2 rounded-md">
                     <code className="text-xs font-mono break-all flex-grow">~/Library/Developer/Xcode/UserData/FontAndColorThemes/</code>
                     <button
@@ -486,7 +507,7 @@ function App() {
               </ol>
             </InfoCard>
 
-            <InfoCard icon={FiAlertTriangle} title={t('disclaimerTitle')}>
+            <InfoCard icon={FiInfo} title={t('disclaimerTitle')}>
               <p>{t('disclaimerText')}</p>
             </InfoCard>
           </div>
@@ -494,7 +515,7 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-xs text-white py-8 mt-12 select-none">
+      <footer className="text-center text-xs text-white select-none">
         Made with <span className="text-pink-400">♥</span> by <a className="underline" href='https://github.com/onevcat'>@onevcat</a>
       </footer>
     </div>
