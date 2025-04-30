@@ -237,7 +237,7 @@ function App() {
 
         {/* Hero Section */}
         <div className="text-center mb-12 md:mb-16 lg:mb-20">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white mb-3">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white mb-3 text-red-500">
             {t('appTitle')}
           </h1>
           <h2 className="text-lg md:text-xl lg:text-2xl text-gray-600 dark:text-gray-300 mb-4">
@@ -311,9 +311,10 @@ function App() {
               <button
                 onClick={handleConvert}
                 disabled={!parsedTheme || isProcessing} // Disable if no theme or processing
-                className={`px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 w-full sm:w-auto sm:inline-flex 
+                // Adjusted padding (px-6 py-5) and background color (bg-green-500, hover:bg-green-600)
+                className={`px-6 py-5 rounded-lg text-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 w-full sm:w-auto sm:inline-flex 
                   ${parsedTheme && !isProcessing
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-900 transform hover:scale-105'
+                    ? 'bg-green-500 hover:bg-green-600 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-900 transform hover:scale-105'
                     : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-inner'}`}
               >
                 {isProcessing ? <FiLoader className="w-5 h-5 animate-spin"/> : <FiDownloadCloud className="w-5 h-5"/>}
