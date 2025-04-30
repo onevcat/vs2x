@@ -27,7 +27,9 @@ const themes: Theme[] = [
 function App() {
   const { t, i18n } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [themeUrl, setThemeUrl] = useState<string>(''); // State for URL input
+  const [themeUrl, setThemeUrl] = useState<string>('');
+  const [isValidThemeUrl, setIsValidThemeUrl] = useState<boolean>(false); // 新增状态，用于跟踪URL有效性
+  const [urlFetchSuccess, setUrlFetchSuccess] = useState<boolean>(false);
   const [parsedTheme, setParsedTheme] = useState<ParsedVscodeTheme | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -51,12 +53,29 @@ function App() {
     i18n.changeLanguage(lng);
   };
 
+  // 更新URL处理函数
+  const handleThemeUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUrl = e.target.value;
+    setThemeUrl(newUrl);
+    setUrlFetchSuccess(false);
+    
+    // 在输入时就验证 URL
+    try {
+      const url = new URL(newUrl);
+      setIsValidThemeUrl(url.protocol === 'http:' || url.protocol === 'https:');
+    } catch {
+      setIsValidThemeUrl(false);
+    }
+  };
+
   // --- Clear State Helper ---
   const clearAllInputs = () => {
     setSelectedFile(null);
     setThemeUrl('');
     setParsedTheme(null);
     setParseError(null);
+    setUrlFetchSuccess(false); // 清除时重置URL获取状态
+    setIsValidThemeUrl(false);
   }
 
   // --- File Handling & Parsing ---
@@ -101,10 +120,10 @@ function App() {
 
   // --- URL Fetching & Parsing ---
   const handleFetchFromUrl = useCallback(async () => {
-    if (!themeUrl || isFetchingUrl || isProcessing) return;
+    if (!themeUrl || !isValidThemeUrl || isFetchingUrl || isProcessing) return;
 
-    clearAllInputs(); // Clear file input and previous results
-    setThemeUrl(themeUrl); // Set URL *after* clearing (re-setting the current value)
+    clearAllInputs();
+    setThemeUrl(themeUrl);
     setIsFetchingUrl(true);
     setParseError(null);
 
@@ -134,28 +153,30 @@ function App() {
 
       // Try to extract a name from the URL if not present in JSON
       if (!json.name) {
-          try {
-              const urlPath = new URL(themeUrl).pathname;
-              const filename = urlPath.substring(urlPath.lastIndexOf('/') + 1);
-              if (filename) {
-                  const name = filename.replace(/\.[^.]+$/, ''); // Remove extension
-                  theme = { ...theme, name };
-              }
-          } catch (e) {
-              // Ignore errors in deriving name from URL
-              console.warn("Could not derive theme name from URL:", e);
+        try {
+          const urlPath = new URL(themeUrl).pathname;
+          const filename = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+          if (filename) {
+            const name = filename.replace(/\.[^.]+$/, ''); // Remove extension
+            theme = { ...theme, name };
           }
+        } catch (e: Error) {
+          // Ignore errors in deriving name from URL
+          console.warn("Could not derive theme name from URL:", e);
+        }
       }
 
       setParsedTheme(theme);
+      setUrlFetchSuccess(true); // 设置成功状态
 
-    } catch (err: any) {
+    } catch (err: Error) {
       console.error("URL Fetch/Parse error:", err);
       setParseError(t('fetchUrlError') + (err instanceof Error ? `: ${err.message}` : ''));
+      setUrlFetchSuccess(false); // 确保失败时重置状态
     } finally {
       setIsFetchingUrl(false);
     }
-  }, [themeUrl, isFetchingUrl, isProcessing, t]); // Removed clearAllInputs from dependencies
+  }, [themeUrl, isValidThemeUrl, isFetchingUrl, isProcessing, t]); // Removed clearAllInputs from dependencies
 
   // --- Drag & Drop Handlers ---
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
@@ -324,28 +345,40 @@ function App() {
               <label htmlFor="url-input" className="block text-lg font-semibold text-gray-100 mb-3">{t('fetchFromUrlTitle')}</label>
               <div className="flex items-center space-x-3">
                 <div className="relative flex-grow">
-                  <FiLink className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <FiLink className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isValidThemeUrl ? 'text-green-400' : 'text-gray-400'}`} />
                   <input
                     id="url-input"
                     type="url"
                     value={themeUrl}
-                    onChange={(e) => setThemeUrl(e.target.value)}
+                    onChange={handleThemeUrlChange}
                     placeholder={t('urlInputPlaceholder')}
                     disabled={isInputDisabled}
-                    className={`w-full pl-10 pr-4 py-2.5 rounded-lg bg-gray-800/60 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-500 transition-colors ${isInputDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-lg bg-gray-800/60 border ${isValidThemeUrl ? 'border-green-500' : 'border-gray-600'} focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-500 transition-colors ${isInputDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
                 <button
                   onClick={handleFetchFromUrl}
-                  disabled={!themeUrl || isInputDisabled}
+                  disabled={!themeUrl || !isValidThemeUrl || isInputDisabled || urlFetchSuccess}
                   className={`px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2
-                    ${!themeUrl || isInputDisabled
+                    ${!themeUrl || !isValidThemeUrl || isInputDisabled || urlFetchSuccess
                       ? 'bg-gray-600 text-gray-400 cursor-not-allowed shadow-inner'
                       : 'bg-green-700/70 hover:bg-green-600/70 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-900'}`
                   }
                 >
-                  {isFetchingUrl ? <FiLoader className="w-5 h-5 animate-spin"/> : <FiGlobe className="w-5 h-5"/>}
-                  <span>{isFetchingUrl ? t('fetchingButton') : t('fetchButton')}</span>
+                  {isFetchingUrl ? (
+                    <FiLoader className="w-5 h-5 animate-spin"/>
+                  ) : urlFetchSuccess ? (
+                    <FiCheck className="w-5 h-5 text-green-400"/>
+                  ) : (
+                    <FiGlobe className="w-5 h-5"/>
+                  )}
+                  
+                  {isFetchingUrl 
+                    ? <span>{t('fetchingButton')}</span>
+                    : urlFetchSuccess 
+                    ? ''
+                    : <span>{t('fetchButton')}</span>
+                  }
                 </button>
               </div>
             </div>

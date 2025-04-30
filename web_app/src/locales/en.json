@@ -21,7 +21,7 @@
   "no": "No",
   "instructionsTitle": "How to Use",
   "instructionsStep1": "Upload a VS Code theme JSON file or fetch it from a URL.",
-  "instructionsStep2": "Click 'Convert & Download' and save the `.xccolortheme` file to this folder:",
+  "instructionsStep2": "Click 'Convert & Download' and save the .xccolortheme file to this folder:",
   "instructionsStep3": "Restart Xcode for the theme to appear in Preferences > Themes.",
   "copyPathButton": "Copy Path",
   "pathCopiedButton": "Copied!",
