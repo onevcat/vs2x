@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiAlertTriangle, FiCopy, FiCheck, FiGithub } from 'react-icons/fi';
+import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiAlertTriangle, FiCopy, FiCheck, FiGithub, FiLink } from 'react-icons/fi'; // Added FiLink
 import { parseVscodeTheme, ParsedVscodeTheme } from './utils/vscodeThemeParser';
 import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
 import stripJsonComments from 'strip-json-comments';
@@ -23,50 +23,53 @@ const themes: Theme[] = [
   { name: 'green', background: 'from-gray-900 to-green-900/50', subtitle: 'from-green-300 to-gray-100' },
 ];
 
+
 function App() {
   const { t, i18n } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [themeUrl, setThemeUrl] = useState<string>(''); // State for URL input
   const [parsedTheme, setParsedTheme] = useState<ParsedVscodeTheme | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  // State for the current theme, initialized with blue as default
+  const [isProcessing, setIsProcessing] = useState(false); // General processing state
+  const [isFetchingUrl, setIsFetchingUrl] = useState(false); // Specific state for URL fetching
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
 
   // --- Theme Handling ---
   useEffect(() => {
-    // Apply dark class globally
     document.documentElement.classList.add('dark');
-
-    // Select a random theme on initial load
     const randomTheme = themes[Math.floor(Math.random() * themes.length)];
     setCurrentTheme(randomTheme);
-
-    // Cleanup function (optional, kept for consistency)
     return () => {
       document.documentElement.classList.remove('dark');
     };
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
 
   // --- Language Handling ---
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
   };
 
+  // --- Clear State Helper ---
+  const clearAllInputs = () => {
+    setSelectedFile(null);
+    setThemeUrl('');
+    setParsedTheme(null);
+    setParseError(null);
+  }
+
   // --- File Handling & Parsing ---
   const handleFileSelected = useCallback((file: File) => {
-    setSelectedFile(file);
-    setParseError(null);
-    setParsedTheme(null);
-    setIsProcessing(true); // Start processing
+    clearAllInputs(); // Clear URL input and previous results
+    setSelectedFile(file); // Set selected file *after* clearing
+    setIsProcessing(true);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const jsonString = e.target?.result as string;
         if (!jsonString) throw new Error('File content is empty');
-        // Simulate processing time for visual feedback
-        setTimeout(() => {
+        setTimeout(() => { // Keep simulation
           try {
             const json = JSON.parse(stripJsonComments(jsonString));
             let theme = parseVscodeTheme(json);
@@ -75,26 +78,84 @@ function App() {
               theme = { ...theme, name };
             }
             setParsedTheme(theme);
-            setIsProcessing(false); // End processing
-          } catch (err) { // Changed from err: any
+            setIsProcessing(false);
+          } catch (err) {
             console.error("Parsing error:", err);
             setParseError(t('parsingError') + (err instanceof Error ? `: ${err.message}` : ''));
-            setIsProcessing(false); // End processing on error
+            setIsProcessing(false);
           }
-        }, 500); // Simulate 500ms processing
-      } catch (err) { // Changed from err: any
+        }, 500);
+      } catch (err) {
         console.error("Initial reading error:", err);
         setParseError(t('readFileError'));
-        setIsProcessing(false); // End processing on error
+        setIsProcessing(false);
       }
     };
     reader.onerror = (e) => {
       console.error("Reading error:", e);
       setParseError(t('readFileError'));
-      setIsProcessing(false); // End processing on error
+      setIsProcessing(false);
     };
     reader.readAsText(file);
-  }, [t]);
+  }, [t]); // Removed clearAllInputs from dependencies
+
+  // --- URL Fetching & Parsing ---
+  const handleFetchFromUrl = useCallback(async () => {
+    if (!themeUrl || isFetchingUrl || isProcessing) return;
+
+    clearAllInputs(); // Clear file input and previous results
+    setThemeUrl(themeUrl); // Set URL *after* clearing (re-setting the current value)
+    setIsFetchingUrl(true);
+    setParseError(null);
+
+    try {
+      // Use relative path for the API endpoint
+      const response = await fetch('/api/fetch-theme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: themeUrl }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Request failed with status ${response.status}`);
+      }
+
+      if (!data.themeJson) {
+        throw new Error('No theme JSON found in the response');
+      }
+
+      // Parse the JSON received from the backend
+      const json = JSON.parse(data.themeJson); // Already stripped comments in backend
+      let theme = parseVscodeTheme(json);
+
+      // Try to extract a name from the URL if not present in JSON
+      if (!json.name) {
+          try {
+              const urlPath = new URL(themeUrl).pathname;
+              const filename = urlPath.substring(urlPath.lastIndexOf('/') + 1);
+              if (filename) {
+                  const name = filename.replace(/\.[^.]+$/, ''); // Remove extension
+                  theme = { ...theme, name };
+              }
+          } catch (e) {
+              // Ignore errors in deriving name from URL
+              console.warn("Could not derive theme name from URL:", e);
+          }
+      }
+
+      setParsedTheme(theme);
+
+    } catch (err: any) {
+      console.error("URL Fetch/Parse error:", err);
+      setParseError(t('fetchUrlError') + (err instanceof Error ? `: ${err.message}` : ''));
+    } finally {
+      setIsFetchingUrl(false);
+    }
+  }, [themeUrl, isFetchingUrl, isProcessing, t]); // Removed clearAllInputs from dependencies
 
   // --- Drag & Drop Handlers ---
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
@@ -113,7 +174,7 @@ function App() {
     if (event.dataTransfer.files && event.dataTransfer.files[0]) {
       const file = event.dataTransfer.files[0];
       if (file.type === 'application/json' || file.name.endsWith('.json') || file.name.endsWith('.jsonc')) {
-        handleFileSelected(file);
+        handleFileSelected(file); // Use the existing file handler
       } else {
         setParseError('Please drop a valid JSON theme file.'); // Consider translating this
       }
@@ -122,11 +183,10 @@ function App() {
 
   // --- Conversion & Download ---
   const handleConvert = () => {
-    if (!parsedTheme || isProcessing) return;
-    setIsProcessing(true); // Indicate processing for download generation
+    if (!parsedTheme || isProcessing || isFetchingUrl) return; // Check both processing states
+    setIsProcessing(true); // Use general processing for download generation
     try {
-      // Simulate generation time
-      setTimeout(() => {
+      setTimeout(() => { // Keep simulation
         try {
           const xml = generateXcodeTheme(parsedTheme);
           const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
@@ -136,19 +196,18 @@ function App() {
           link.download = filename;
           document.body.appendChild(link);
           link.click();
-          setIsProcessing(false); // End processing
+          setIsProcessing(false);
           setTimeout(() => {
             URL.revokeObjectURL(link.href);
             document.body.removeChild(link);
           }, 100);
         } catch (error) {
           console.error("Conversion error:", error);
-          setParseError('Failed to generate Xcode theme.'); // Consider translating this
-          setIsProcessing(false); // End processing on error
+          setParseError('Failed to generate Xcode theme.');
+          setIsProcessing(false);
         }
-      }, 300); // Simulate 300ms generation
+      }, 300);
     } catch (error) {
-      // Catch potential immediate errors if any (though unlikely here)
       console.error("Immediate conversion error:", error);
       setParseError('Failed to initiate theme generation.');
       setIsProcessing(false);
@@ -163,7 +222,6 @@ function App() {
       setTimeout(() => setCopySuccess(false), 2000); // Hide after 2 seconds
     }, (err) => {
       console.error('Failed to copy path: ', err);
-      // Maybe show an error message to the user
     });
   };
 
@@ -191,6 +249,12 @@ function App() {
       <p><strong>{t('themeSemanticTokenCount')}</strong> {Object.keys(theme.semanticTokenColors || {}).length}</p>
     </div>
   );
+
+
+  // Determine if the main action button should be disabled
+  const isActionButtonDisabled = !parsedTheme || isProcessing || isFetchingUrl;
+  // Determine if inputs should be disabled
+  const isInputDisabled = isProcessing || isFetchingUrl;
 
   return (
     // Apply dynamic background gradient class
@@ -236,7 +300,6 @@ function App() {
 
       {/* Main Content */}
       <main className="w-3/4 mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
-
         {/* Hero Section */}
         <div className="text-center mb-12 md:mb-16 lg:mb-20">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-3">
@@ -251,42 +314,83 @@ function App() {
           </p>
         </div>
 
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* Left/Top: Upload & Info Area */}
-          <div className="lg:col-span-2 bg-gray-900/30 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300">
-            {/* File Uploader */}
+          {/* Left/Top: Input Area */}
+          <div className="lg:col-span-2 bg-gray-900/30 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300 space-y-8">
+
+            {/* URL Input Section */}
+            <div>
+              <label htmlFor="url-input" className="block text-lg font-semibold text-gray-100 mb-3">{t('fetchFromUrlTitle')}</label>
+              <div className="flex items-center space-x-3">
+                <div className="relative flex-grow">
+                  <FiLink className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="url-input"
+                    type="url"
+                    value={themeUrl}
+                    onChange={(e) => setThemeUrl(e.target.value)}
+                    placeholder={t('urlInputPlaceholder')}
+                    disabled={isInputDisabled}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-lg bg-gray-800/60 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-100 placeholder-gray-500 transition-colors ${isInputDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  />
+                </div>
+                <button
+                  onClick={handleFetchFromUrl}
+                  disabled={!themeUrl || isInputDisabled}
+                  className={`px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2
+                    ${!themeUrl || isInputDisabled
+                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed shadow-inner'
+                      : 'bg-green-700/70 hover:bg-green-600/70 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-900'}`
+                  }
+                >
+                  {isFetchingUrl ? <FiLoader className="w-5 h-5 animate-spin"/> : <FiGlobe className="w-5 h-5"/>}
+                  <span>{isFetchingUrl ? t('fetchingButton') : t('fetchButton')}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center text-center">
+              <hr className="flex-grow border-t border-gray-600"/>
+              <span className="px-4 text-sm text-gray-400">{t('or')}</span>
+              <hr className="flex-grow border-t border-gray-600"/>
+            </div>
+
+            {/* File Uploader Section */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300 
+              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300
                 ${isDragging ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600 hover:border-gray-500'}
                 ${selectedFile && !parseError ? 'border-green-500 bg-green-900/30' : ''}
-                ${parseError ? 'border-red-500 bg-red-900/30' : ''}`
+                ${parseError && !selectedFile ? 'border-red-500 bg-red-900/30' : ''} /* Only show red border if error is relevant to upload */
+                ${isInputDisabled ? 'opacity-60' : ''}`
               }
             >
               <input
                 type="file"
                 accept=".json,.jsonc"
                 onChange={(e) => e.target.files && handleFileSelected(e.target.files[0])}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" // Hidden input
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 id="file-upload"
-                disabled={isProcessing} // Disable during processing
+                disabled={isInputDisabled}
               />
-              <label htmlFor="file-upload" className={`cursor-pointer ${isProcessing ? 'cursor-wait' : ''}`}>
-                {isProcessing ? (
+              <label htmlFor="file-upload" className={`cursor-pointer ${isInputDisabled ? 'cursor-wait' : ''}`}>
+                {isProcessing && selectedFile ? ( // Show loader only if processing a file
                   <FiLoader className="mx-auto h-12 w-12 mb-4 text-gray-400 animate-spin" />
                 ) : (
-                  <FiUploadCloud className={`mx-auto h-12 w-12 mb-4 transition-colors duration-300 
+                  <FiUploadCloud className={`mx-auto h-12 w-12 mb-4 transition-colors duration-300
                     ${selectedFile && !parseError ? 'text-green-400' : 'text-gray-500'}
-                    ${parseError ? 'text-red-400' : ''}`} />
+                    ${parseError && !selectedFile ? 'text-red-400' : ''}`} />
                 )}
                 <h3 className="text-lg font-semibold text-gray-100 mb-2">{t('uploadAreaTitle')}</h3>
                 <p className="text-sm text-gray-400 mb-4">{t('uploadAreaDescription')}</p>
-                <span className={`inline-block px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300 
+                <span className={`inline-block px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300
                   ${selectedFile && !parseError ? 'bg-green-900/50 text-green-300' : 'bg-gray-800/60 hover:bg-gray-600 text-gray-200'}
-                  ${parseError ? 'bg-red-900/50 text-red-300' : ''}
-                  ${isProcessing ? 'opacity-50' : ''}`
+                  ${parseError && !selectedFile ? 'bg-red-900/50 text-red-300' : ''}
+                  ${isInputDisabled ? 'opacity-50' : ''}`
                 }>
                   {selectedFile ? t('fileSelected') : t('uploadAreaButton')}
                 </span>
@@ -301,25 +405,25 @@ function App() {
               </div>
             )}
 
-            {/* Convert Button - Moved Here */}
+            {/* Convert Button */}
             <div className="mt-8 text-center">
               <button
                 onClick={handleConvert}
-                disabled={!parsedTheme || isProcessing}
-                // Ensure download button remains green
-                className={`px-10 py-4 rounded-lg text-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 w-full sm:w-auto sm:inline-flex
-                  ${parsedTheme && !isProcessing
-                    ? 'bg-green-700 hover:bg-green-500 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 focus:ring-offset-gray-900' // Keep green style
-                    : 'bg-gray-600 text-gray-400 cursor-not-allowed shadow-inner'}`
+                disabled={isActionButtonDisabled}
+                className={`px-20 py-4 rounded-lg text-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 w-full sm:w-auto sm:inline-flex
+                  ${!isActionButtonDisabled
+                    ? 'bg-green-700 hover:bg-green-500 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 focus:ring-offset-gray-900'
+                    : 'bg-gray-700/40 text-gray-400 cursor-not-allowed shadow-inner'}`
                 }
               >
-                {isProcessing ? <FiLoader className="w-5 h-5 animate-spin"/> : <FiDownloadCloud className="w-5 h-5"/>}
-                <span>{isProcessing ? 'Processing...' : t('convertAndDownload')}</span>
+                {/* Show loader if processing download, otherwise icon */}
+                {isProcessing && !isFetchingUrl ? <FiLoader className="w-5 h-5 animate-spin"/> : <FiDownloadCloud className="w-5 h-5"/>}
+                <span>{isProcessing && !isFetchingUrl ? t('processingButton') : t('convertAndDownload')}</span>
               </button>
             </div>
 
             {/* Parsed Theme Info */}
-            {parsedTheme && !isProcessing && (
+            {parsedTheme && !isInputDisabled && ( // Show only when not busy
               <div className="mt-8 p-6 rounded-xl bg-gray-700/30">
                 <h4 className="font-bold mb-3 text-gray-100">{t('themeInfoTitle')}</h4>
                 <ThemeInfoDisplay theme={parsedTheme} />
