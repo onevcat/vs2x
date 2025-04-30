@@ -6,6 +6,23 @@ import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
 import stripJsonComments from 'strip-json-comments';
 import './index.css';
 
+// Define Theme Types
+interface Theme {
+  name: string;
+  background: string;
+  subtitle: string;
+}
+
+// Define Available Themes
+const themes: Theme[] = [
+  { name: 'blue', background: 'from-gray-900 to-blue-900/50', subtitle: 'from-blue-300 to-gray-100' },
+  { name: 'yellow', background: 'from-gray-900 to-yellow-900/50', subtitle: 'from-yellow-300 to-gray-100' },
+  { name: 'orange', background: 'from-gray-900 to-orange-900/50', subtitle: 'from-orange-300 to-gray-100' },
+  { name: 'purple', background: 'from-gray-900 to-purple-900/50', subtitle: 'from-purple-300 to-gray-100' },
+  { name: 'red', background: 'from-gray-900 to-red-900/50', subtitle: 'from-red-300 to-gray-100' },
+  { name: 'green', background: 'from-gray-900 to-green-900/50', subtitle: 'from-green-300 to-gray-100' },
+];
+
 function App() {
   const { t, i18n } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -14,16 +31,23 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  // State for the current theme, initialized with blue as default
+  const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
 
   // --- Theme Handling ---
   useEffect(() => {
-    // Always apply dark class
+    // Apply dark class globally
     document.documentElement.classList.add('dark');
-    // Optionally remove the class on cleanup if needed, though likely not for permanent dark mode
+
+    // Select a random theme on initial load
+    const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+    setCurrentTheme(randomTheme);
+
+    // Cleanup function (optional, kept for consistency)
     return () => {
       document.documentElement.classList.remove('dark');
     };
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   // --- Language Handling ---
   const changeLanguage = (lng: string) => {
@@ -145,7 +169,7 @@ function App() {
 
   // --- Render Helper Components ---
   const InfoCard = ({ icon: Icon, title, children }: { icon: React.ElementType, title: string, children: React.ReactNode }) => (
-    <div className="bg-gray-800/60 rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+    <div className="bg-gray-900/30 rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
       <div className="flex items-center mb-3">
         <Icon className="w-6 h-6 mr-3 text-white flex-shrink-0" />
         <h3 className="text-lg font-semibold text-gray-100">{title}</h3>
@@ -169,9 +193,10 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen dark bg-gradient-to-br from-gray-900 to-blue-900/50 text-gray-100 transition-colors duration-300 font-sans">
+    // Apply dynamic background gradient class
+    <div className={`min-h-screen dark bg-gradient-to-br ${currentTheme.background} text-gray-100 transition-colors duration-300 font-sans`}>
       {/* Header with Controls */}
-      <header className="sticky top-0 z-30 w-full bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 shadow-sm">
+      <header className="sticky top-0 z-30 w-full bg-gray-800/50 backdrop-blur-md border-b border-gray-700/50 shadow-sm">
         <div className="w-3/4 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Left: Logo */}
@@ -217,7 +242,8 @@ function App() {
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-3">
             {t('appTitle')}
           </h1>
-          <h2 className="text-lg md:text-xl lg:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-gray-100 mb-4">
+          {/* Apply dynamic subtitle gradient class */}
+          <h2 className={`text-lg md:text-xl lg:text-2xl text-transparent bg-clip-text bg-gradient-to-r ${currentTheme.subtitle} mb-4`}>
             {t('appSubtitle')}
           </h2>
           <p className="text-md md:text-lg text-gray-400 font-medium">
@@ -227,7 +253,7 @@ function App() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Left/Top: Upload & Info Area */}
-          <div className="lg:col-span-2 bg-gray-800/60 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300">
+          <div className="lg:col-span-2 bg-gray-900/30 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-shadow duration-300">
             {/* File Uploader */}
             <div
               onDragOver={handleDragOver}
@@ -258,7 +284,7 @@ function App() {
                 <h3 className="text-lg font-semibold text-gray-100 mb-2">{t('uploadAreaTitle')}</h3>
                 <p className="text-sm text-gray-400 mb-4">{t('uploadAreaDescription')}</p>
                 <span className={`inline-block px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300 
-                  ${selectedFile && !parseError ? 'bg-green-900/50 text-green-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}
+                  ${selectedFile && !parseError ? 'bg-green-900/50 text-green-300' : 'bg-gray-800/60 hover:bg-gray-600 text-gray-200'}
                   ${parseError ? 'bg-red-900/50 text-red-300' : ''}
                   ${isProcessing ? 'opacity-50' : ''}`
                 }>
@@ -280,9 +306,10 @@ function App() {
               <button
                 onClick={handleConvert}
                 disabled={!parsedTheme || isProcessing}
-                className={`px-10 py-4 rounded-lg text-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 w-full sm:w-auto sm:inline-flex 
+                // Ensure download button remains green
+                className={`px-10 py-4 rounded-lg text-lg font-semibold transition-all duration-200 flex items-center justify-center space-x-2 w-full sm:w-auto sm:inline-flex
                   ${parsedTheme && !isProcessing
-                    ? 'bg-green-700 hover:bg-green-500 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 focus:ring-offset-gray-900'
+                    ? 'bg-green-700 hover:bg-green-500 text-white shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 focus:ring-offset-gray-900' // Keep green style
                     : 'bg-gray-600 text-gray-400 cursor-not-allowed shadow-inner'}`
                 }
               >
@@ -307,7 +334,7 @@ function App() {
                 <li>{t('instructionsStep1')}</li>
                 <li>
                   {t('instructionsStep2')}
-                  <div className="mt-2 flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                  <div className="mt-2 flex items-center space-x-2 bg-gray-900/40 p-2 rounded-md">
                     <code className="text-xs font-mono break-all flex-grow">~/Library/Developer/Xcode/UserData/FontAndColorThemes/</code>
                     <button
                       onClick={copyXcodePath}
