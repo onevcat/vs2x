@@ -1,5 +1,4 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import stripJsonComments from 'strip-json-comments';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Allow requests from your frontend development and production domains
@@ -26,9 +25,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Validate the URL format (basic validation)
     new URL(url);
-  } catch (error) {
+  } catch (_error) { // Prefix unused variable with underscore
     return res.status(400).json({ error: 'Invalid URL format' });
   }
+
+  // Dynamically import stripJsonComments inside the handler
+  const { default: stripJsonComments } = await import('strip-json-comments');
 
   try {
     console.log(`Fetching theme from URL: ${url}`);
@@ -45,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
           const text = await response.text();
           errorText += ` - ${text.substring(0, 100)}`; // Limit error message length
-      } catch (e) {
+      } catch (_e) { // Prefix unused variable with underscore
           // Ignore if reading text fails
       }
       return res.status(response.status).json({ error: errorText });
@@ -73,9 +75,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Fetched content does not appear to be JSON' });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) { // Use unknown instead of any
     console.error(`Error fetching or processing URL ${url}:`, error);
     // Provide a more generic error message for network or unexpected issues
-    return res.status(500).json({ error: `Server error fetching URL: ${error.message || 'Unknown error'}` });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return res.status(500).json({ error: `Server error fetching URL: ${message}` });
   }
 }
