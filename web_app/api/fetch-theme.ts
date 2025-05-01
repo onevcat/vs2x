@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import stripJsonComments from 'strip-json-comments'; // Reuse the existing dependency
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import stripJsonComments from 'strip-json-comments';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Allow requests from your frontend development and production domains
