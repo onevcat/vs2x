@@ -515,8 +515,8 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-xs text-white select-none">
-        Made with <span className="text-pink-400">♥</span> by <a className="underline" href='https://github.com/onevcat'>@onevcat</a>
+      <footer className="text-center text-xs text-white select-none pb-4">
+        Made with <span className="text-pink-400">♥</span> by <a className="underline" target="_blank" href='https://github.com/onevcat'>@onevcat</a>
       </footer>
     </div>
   );
