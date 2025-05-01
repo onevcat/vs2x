@@ -482,8 +482,8 @@ function App() {
                 }
               >
                 {/* Show loader if processing download, otherwise icon */}
-                {isProcessing && !isFetchingUrl ? <FiLoader className="w-5 h-5 animate-spin"/> : <FiDownloadCloud className="w-5 h-5"/>}
-                <span>{isProcessing && !isFetchingUrl ? t('processingButton') : t('convertAndDownload')}</span>
+                {<FiDownloadCloud className="w-5 h-5"/>}
+                <span>{t('convertAndDownload')}</span>
               </button>
             </div>
 
