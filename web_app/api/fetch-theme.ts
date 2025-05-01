@@ -1,26 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-
-// Helper function to remove single-line comments (//)
-function removeJsonComments(jsonString: string): string {
-  // Remove lines starting with //, potentially preceded by whitespace
-  // Also handle trailing comments after JSON values (more complex, basic version here)
-  return jsonString.split('\n').map(line => {
-      const commentIndex = line.indexOf('//');
-      // Be careful not to remove // inside strings
-      // This is a simplified approach and might fail for complex cases
-      // A more robust parser would be needed for full accuracy
-      if (commentIndex !== -1) {
-          // Very basic check: if there's a quote before the comment, maybe keep it?
-          // This is fragile. Consider if comments are only expected on their own lines.
-          const quoteIndex = line.indexOf('"');
-          if (quoteIndex === -1 || quoteIndex > commentIndex) {
-              return line.substring(0, commentIndex).trimRight();
-          }
-      }
-      return line;
-  }).filter(line => line.trim().length > 0) // Remove empty lines resulting from comment removal
-    .join('\n');
-}
+import stripJsonComments from 'strip-json-comments';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Allow requests from your frontend development and production domains
@@ -79,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (contentType?.includes('json') || (rawText.trim().startsWith('{') && rawText.trim().endsWith('}'))) {
         try {
             // Strip comments using the local function before parsing
-            const jsonContent = removeJsonComments(rawText);
+            const jsonContent = stripJsonComments(rawText);
             // Try parsing to ensure it's valid JSON before sending back
             JSON.parse(jsonContent);
             console.log(`Successfully fetched and validated JSON from ${url}`);
