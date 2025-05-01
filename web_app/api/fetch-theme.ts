@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import stripJsonComments from 'strip-json-comments';
+import { parse } from 'jsonc-parser';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Allow requests from your frontend development and production domains
@@ -57,18 +57,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Check if content type suggests JSON or if it looks like JSON
     if (contentType?.includes('json') || (rawText.trim().startsWith('{') && rawText.trim().endsWith('}'))) {
         try {
-            // Strip comments using the local function before parsing
-            const jsonContent = stripJsonComments(rawText);
-            // Try parsing to ensure it's valid JSON before sending back
-            JSON.parse(jsonContent);
-            console.log(`Successfully fetched and validated JSON from ${url}`);
-            // Send back the JSON content as a string
-            return res.status(200).json({ themeJson: jsonContent });
-        } catch (parseError) {
-            console.error(`Error parsing JSON from ${url} after comment removal:`, parseError);
-            // Include the problematic content (truncated) for debugging
-            const snippet = rawText.substring(0, 200); // Get first 200 chars
-            return res.status(400).json({ error: `Fetched content is not valid JSON after attempting to remove comments. Snippet: ${snippet}` });
+            // Parse the JSONC content using jsonc-parser
+            const parseErrors: any[] = [];
+            const jsonData = parse(rawText, parseErrors, { allowTrailingComma: true });
+
+            if (parseErrors.length > 0) {
+                console.error(`Error parsing JSONC from ${url}:`, parseErrors);
+                const snippet = rawText.substring(0, 200); // Get first 200 chars
+                // Provide a more specific error based on the first parse error
+                const firstError = parseErrors[0];
+                return res.status(400).json({ error: `Fetched content is not valid JSONC. Error: ${firstError.error} at offset ${firstError.offset}. Snippet: ${snippet}` });
+            }
+
+            console.log(`Successfully fetched and parsed JSONC from ${url}`);
+            // Send back the parsed JSON data directly
+            // VercelResponse.json will stringify it correctly
+            return res.status(200).json({ themeJson: jsonData });
+        } catch (parseError) { // Catch potential errors from parse itself, though less likely with jsonc-parser
+            console.error(`Unexpected error parsing JSONC from ${url}:`, parseError);
+            const snippet = rawText.substring(0, 200);
+            return res.status(400).json({ error: `Error processing fetched content. Snippet: ${snippet}` });
         }
     } else {
         console.warn(`Content type from ${url} is not JSON: ${contentType}`);

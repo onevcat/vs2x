@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiStar, FiCopy, FiCheck, FiGithub, FiLink } from 'react-icons/fi'; // Added FiLink
+import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiStar, FiCopy, FiCheck, FiGithub, FiLink } from 'react-icons/fi';
 import { parseVscodeTheme, ParsedVscodeTheme } from './utils/vscodeThemeParser';
 import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
-import stripJsonComments from 'strip-json-comments';
+import { parse } from 'jsonc-parser';
 import './index.css';
 
 // Define Theme Types
@@ -84,6 +84,7 @@ function App() {
     clearAllInputs(); // Clear URL input and previous results
     setSelectedFile(file); // Set selected file *after* clearing
     setIsProcessing(true);
+    setParseError(null); // Clear previous errors
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -91,7 +92,16 @@ function App() {
         if (!jsonString) throw new Error('File content is empty');
         setTimeout(() => { // Keep simulation
           try {
-            const json = JSON.parse(stripJsonComments(jsonString));
+            // Use jsonc-parser's parse function
+            const parseErrors: any[] = [];
+            const json = parse(jsonString, parseErrors, { allowTrailingComma: true });
+
+            if (parseErrors.length > 0) {
+              // Handle JSONC parsing errors more specifically if needed
+              const firstError = parseErrors[0];
+              throw new Error(`Invalid JSONC: ${firstError.error} at offset ${firstError.offset}`);
+            }
+
             let theme = parseVscodeTheme(json);
             if (!json.name && file.name) {
               const name = file.name.replace(/\.[^.]+$/, '');
@@ -149,7 +159,8 @@ function App() {
       }
 
       // Parse the JSON received from the backend
-      const json = JSON.parse(data.themeJson); // Already stripped comments in backend
+      // The backend now sends parsed JSON, no need to parse again here
+      const json = data.themeJson; // Use the already parsed JSON
       let theme = parseVscodeTheme(json);
 
       // Try to extract a name from the URL if not present in JSON
