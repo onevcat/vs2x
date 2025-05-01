@@ -2,11 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2023"],
-    "module": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "skipLibCheck": true,
 
     /* Bundler mode (adjusted for emitting) */
-    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
 
