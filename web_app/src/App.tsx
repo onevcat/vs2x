@@ -161,7 +161,7 @@ function App() {
             const name = filename.replace(/\.[^.]+$/, ''); // Remove extension
             theme = { ...theme, name };
           }
-        } catch (e: Error) {
+        } catch (e) {
           // Ignore errors in deriving name from URL
           console.warn("Could not derive theme name from URL:", e);
         }
@@ -170,7 +170,7 @@ function App() {
       setParsedTheme(theme);
       setUrlFetchSuccess(true); // 设置成功状态
 
-    } catch (err: Error) {
+    } catch (err) {
       console.error("URL Fetch/Parse error:", err);
       setParseError(t('fetchUrlError') + (err instanceof Error ? `: ${err.message}` : ''));
       setUrlFetchSuccess(false); // 确保失败时重置状态
