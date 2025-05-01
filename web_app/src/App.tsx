@@ -438,6 +438,11 @@ function App() {
                   type="file"
                   accept=".json,.jsonc"
                   onChange={(e) => e.target.files && handleFileSelected(e.target.files[0])}
+                  // Add onClick handler to clear the value
+                  onClick={(event) => {
+                    // Reset the input value to allow selecting the same file again
+                    (event.target as HTMLInputElement).value = ''
+                  }}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   id="file-upload"
                   disabled={isInputDisabled}
