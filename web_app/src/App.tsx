@@ -313,7 +313,8 @@ function App() {
     <div className={`min-h-screen dark bg-gradient-to-br ${currentTheme.background} text-gray-100 transition-colors duration-300 font-sans`}>
       {/* Header with Controls */}
       <header className="sticky top-0 z-30 w-full bg-gray-800/50 backdrop-blur-md border-b border-gray-700/50 shadow-sm">
-        <div className="w-3/4 mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Apply responsive width and centering */}
+        <div className="w-full lg:w-3/4 mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Left: Logo */}
             <div className="text-xl font-bold text-white">
@@ -351,7 +352,8 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="w-3/4 mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
+      {/* Apply responsive width and centering */}
+      <main className="w-full lg:w-3/4 mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
         {/* Hero Section */}
         <div className="text-center mb-12 md:mb-16 lg:mb-20">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-3">
