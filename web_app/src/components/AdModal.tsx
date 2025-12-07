@@ -54,13 +54,9 @@ export const AdModal: React.FC<AdModalProps> = ({ isOpen, onClose }) => {
             {/* AdSense Ad Container */}
             <ins
               className="adsbygoogle"
-              style={{
-                display: 'block',
-                width: '100%',
-                height: '250px',
-              }}
+              style={{ display: 'block' }}
               data-ad-client="ca-pub-3324997515191619"
-              data-ad-slot="AUTO"
+              data-ad-slot="5192457789"
               data-ad-format="auto"
               data-full-width-responsive="true"
             ></ins>
