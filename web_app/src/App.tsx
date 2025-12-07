@@ -4,6 +4,7 @@ import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiStar, FiCo
 import { parseVscodeTheme, ParsedVscodeTheme } from './utils/vscodeThemeParser';
 import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
 import { parse } from 'jsonc-parser';
+import { AdModal } from './components/AdModal';
 import './index.css';
 
 // Define Theme Types
@@ -38,6 +39,8 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false); // General processing state
   const [isFetchingUrl, setIsFetchingUrl] = useState(false); // Specific state for URL fetching
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [pendingDownload, setPendingDownload] = useState(false);
 
   // --- Theme Handling ---
   useEffect(() => {
@@ -217,33 +220,44 @@ function App() {
   // --- Conversion & Download ---
   const handleConvert = () => {
     if (!parsedTheme || isProcessing || isFetchingUrl) return; // Check both processing states
-    setIsProcessing(true); // Use general processing for download generation
-    try {
-      setTimeout(() => { // Keep simulation
-        try {
-          const xml = generateXcodeTheme(parsedTheme);
-          const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-          const filename = `${parsedTheme.name || 'theme'}.xccolortheme`;
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          setIsProcessing(false);
-          setTimeout(() => {
-            URL.revokeObjectURL(link.href);
-            document.body.removeChild(link);
-          }, 100);
-        } catch (error) {
-          console.error("Conversion error:", error);
-          setParseError('Failed to generate Xcode theme.');
-          setIsProcessing(false);
-        }
-      }, 300);
-    } catch (error) {
-      console.error("Immediate conversion error:", error);
-      setParseError('Failed to initiate theme generation.');
-      setIsProcessing(false);
+    setShowAdModal(true);
+    setPendingDownload(true);
+  };
+
+  const handleAdModalClose = () => {
+    setShowAdModal(false);
+    if (pendingDownload) {
+      setIsProcessing(true); // Use general processing for download generation
+      try {
+        setTimeout(() => { // Keep simulation
+          try {
+            const xml = generateXcodeTheme(parsedTheme!);
+            const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+            const filename = `${parsedTheme!.name || 'theme'}.xccolortheme`;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            setIsProcessing(false);
+            setPendingDownload(false);
+            setTimeout(() => {
+              URL.revokeObjectURL(link.href);
+              document.body.removeChild(link);
+            }, 100);
+          } catch (error) {
+            console.error("Conversion error:", error);
+            setParseError('Failed to generate Xcode theme.');
+            setIsProcessing(false);
+            setPendingDownload(false);
+          }
+        }, 300);
+      } catch (error) {
+        console.error("Immediate conversion error:", error);
+        setParseError('Failed to initiate theme generation.');
+        setIsProcessing(false);
+        setPendingDownload(false);
+      }
     }
   };
 
@@ -531,6 +545,9 @@ function App() {
           </div>
         </div>
       </main>
+
+      {/* Ad Modal */}
+      <AdModal isOpen={showAdModal} onClose={handleAdModalClose} />
 
       {/* Footer */}
       <footer className="text-center text-xs text-white select-none pb-4">
