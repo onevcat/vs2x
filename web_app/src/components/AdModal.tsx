@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { FiX } from 'react-icons/fi';
 
 interface AdModalProps {
   isOpen: boolean;
@@ -39,13 +38,6 @@ export const AdModal: React.FC<AdModalProps> = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white">Support Our Project</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-            aria-label="Close modal"
-          >
-            <FiX className="w-6 h-6" />
-          </button>
         </div>
 
         {/* Ad Container */}
