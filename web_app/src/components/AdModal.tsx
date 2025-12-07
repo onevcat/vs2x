@@ -50,16 +50,21 @@ export const AdModal: React.FC<AdModalProps> = ({ isOpen, onClose }) => {
 
         {/* Ad Container */}
         <div className="p-6 bg-gray-700/30">
-          <div className="bg-gray-800 rounded-lg p-4 min-h-[250px] flex items-center justify-center border border-gray-700">
-            {/* AdSense Ad Container */}
-            <ins
-              className="adsbygoogle"
-              style={{ display: 'block' }}
-              data-ad-client="ca-pub-3324997515191619"
-              data-ad-slot="5192457789"
-              data-ad-format="auto"
-              data-full-width-responsive="true"
-            ></ins>
+          <div className="w-full bg-gray-800 rounded-lg p-4 min-h-[280px] flex items-center justify-center border border-gray-700">
+            {/* AdSense Ad Container - must have explicit width */}
+            <div style={{ width: '100%', minHeight: '280px' }}>
+              <ins
+                className="adsbygoogle"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                }}
+                data-ad-client="ca-pub-3324997515191619"
+                data-ad-slot="5192457789"
+                data-ad-format="auto"
+                data-full-width-responsive="true"
+              ></ins>
+            </div>
           </div>
         </div>
 
