@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiStar, FiCopy, FiCheck, FiGithub, FiLink } from 'react-icons/fi';
+import { FiUploadCloud, FiGlobe, FiDownloadCloud, FiLoader, FiInfo, FiStar, FiCopy, FiCheck, FiGithub, FiLink, FiHeart } from 'react-icons/fi';
 import { parseVscodeTheme, ParsedVscodeTheme } from './utils/vscodeThemeParser';
 import { generateXcodeTheme } from './utils/xcodeThemeGenerator';
 import { parse } from 'jsonc-parser';
-import { AdModal } from './components/AdModal';
 import './index.css';
 
 // Define Theme Types
@@ -25,7 +24,6 @@ const themes: Theme[] = [
   { name: 'green', background: 'from-gray-900 to-green-900/50', subtitle: 'from-green-300 to-gray-100', tint: 'text-green-300' },
 ];
 
-
 function App() {
   const { t, i18n } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -39,8 +37,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false); // General processing state
   const [isFetchingUrl, setIsFetchingUrl] = useState(false); // Specific state for URL fetching
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0]);
-  const [showAdModal, setShowAdModal] = useState(false);
-  const [pendingDownload, setPendingDownload] = useState(false);
+  const hasPushedSidebarAd = useRef(false);
 
   // --- Theme Handling ---
   useEffect(() => {
@@ -50,6 +47,17 @@ function App() {
     return () => {
       document.documentElement.classList.remove('dark');
     };
+  }, []);
+
+  useEffect(() => {
+    if (hasPushedSidebarAd.current) return;
+    try {
+      (window as any).adsbygoogle = (window as any).adsbygoogle || [];
+      (window as any).adsbygoogle.push({});
+      hasPushedSidebarAd.current = true;
+    } catch (error) {
+      console.error('AdSense error:', error);
+    }
   }, []);
 
   // --- Language Handling ---
@@ -220,44 +228,33 @@ function App() {
   // --- Conversion & Download ---
   const handleConvert = () => {
     if (!parsedTheme || isProcessing || isFetchingUrl) return; // Check both processing states
-    setShowAdModal(true);
-    setPendingDownload(true);
-  };
-
-  const handleAdModalClose = () => {
-    setShowAdModal(false);
-    if (pendingDownload) {
-      setIsProcessing(true); // Use general processing for download generation
-      try {
-        setTimeout(() => { // Keep simulation
-          try {
-            const xml = generateXcodeTheme(parsedTheme!);
-            const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-            const filename = `${parsedTheme!.name || 'theme'}.xccolortheme`;
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            setIsProcessing(false);
-            setPendingDownload(false);
-            setTimeout(() => {
-              URL.revokeObjectURL(link.href);
-              document.body.removeChild(link);
-            }, 100);
-          } catch (error) {
-            console.error("Conversion error:", error);
-            setParseError('Failed to generate Xcode theme.');
-            setIsProcessing(false);
-            setPendingDownload(false);
-          }
-        }, 300);
-      } catch (error) {
-        console.error("Immediate conversion error:", error);
-        setParseError('Failed to initiate theme generation.');
-        setIsProcessing(false);
-        setPendingDownload(false);
-      }
+    setIsProcessing(true); // Use general processing for download generation
+    try {
+      setTimeout(() => { // Keep simulation
+        try {
+          const xml = generateXcodeTheme(parsedTheme);
+          const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+          const filename = `${parsedTheme.name || 'theme'}.xccolortheme`;
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          setIsProcessing(false);
+          setTimeout(() => {
+            URL.revokeObjectURL(link.href);
+            document.body.removeChild(link);
+          }, 100);
+        } catch (error) {
+          console.error("Conversion error:", error);
+          setParseError('Failed to generate Xcode theme.');
+          setIsProcessing(false);
+        }
+      }, 300);
+    } catch (error) {
+      console.error("Immediate conversion error:", error);
+      setParseError('Failed to initiate theme generation.');
+      setIsProcessing(false);
     }
   };
 
@@ -542,12 +539,31 @@ function App() {
             <InfoCard icon={FiInfo} title={t('disclaimerTitle')}>
               <p>{t('disclaimerText')}</p>
             </InfoCard>
+
+            <InfoCard icon={FiInfo} title={t('adTitle')}>
+              <p className="text-sm text-gray-300 flex items-center gap-2">
+                <FiHeart className="w-4 h-4 text-pink-400" />
+                <span>{t('adSupportText')}</span>
+              </p>
+              <div className="w-full bg-gray-800 rounded-lg p-4 min-h-[280px] flex items-center justify-center border border-gray-700">
+                <div style={{ width: '100%', minHeight: '280px' }}>
+                  <ins
+                    className="adsbygoogle"
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                    }}
+                    data-ad-client="ca-pub-3324997515191619"
+                    data-ad-slot="5192457789"
+                    data-ad-format="auto"
+                    data-full-width-responsive="true"
+                  ></ins>
+                </div>
+              </div>
+            </InfoCard>
           </div>
         </div>
       </main>
-
-      {/* Ad Modal */}
-      <AdModal isOpen={showAdModal} onClose={handleAdModalClose} />
 
       {/* Footer */}
       <footer className="text-center text-xs text-white select-none pb-4">

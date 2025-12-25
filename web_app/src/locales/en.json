@@ -27,6 +27,8 @@
   "pathCopiedButton": "Copied!",
   "disclaimerTitle": "Note",
   "disclaimerText": "Conversion might not be perfect due to differences between VS Code and Xcode theme capabilities. Semantic highlighting rules and font might require manual adjustments.",
+  "adTitle": "Support VS2X",
+  "adSupportText": "Thanks for keeping VS2X free — your support makes this project possible.",
   "language": "Language",
   "appTitle": "VS2X",
   "appSubtitle": "Easily convert your favorite VS Code themes to Xcode format",

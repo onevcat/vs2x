@@ -28,6 +28,8 @@
   "instructionsStep4": "重启 Xcode 并在“偏好设置”>“字体与颜色”中选择新主题。",
   "disclaimerTitle": "注意事项",
   "disclaimerText": "由于 VS Code 和 Xcode 主题功能差异，转换可能不完美。语义高亮规则和字体等可能需要手动调整。",
+  "adTitle": "支持 VS2X",
+  "adSupportText": "感谢你的支持，让 VS2X 持续运行。",
   "language": "语言",
   "appTitle": "VS2X",
   "appSubtitle": "轻松将您喜爱的 VS Code 主题转换为 Xcode 格式",
